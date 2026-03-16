@@ -37,6 +37,11 @@ The project uses the **Fruits360 dataset**, a dataset containing images of vario
 
 A simple **local HTML interface** was developed to test the trained model and simulate a real-world application scenario.
 
+## Model Weights
+
+Model weight files are not included in this repository because of their size.  
+The repository contains the training notebook, application code, and project structure needed to reproduce the project.
+
 ## Author
 
 Dédevi Silvia AMAH-TCHOUTCHOUI  
