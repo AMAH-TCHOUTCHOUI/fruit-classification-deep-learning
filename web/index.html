@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Fruit Classifier • Démo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style> #css
+  .cta:active { transform: translateY(1px); }
+  .cta:disabled { opacity:.6; cursor:not-allowed; }
+  .cta:disabled:active { transform:none; } /* ne “saute” pas quand disabled */
+
+    :root{
+      --bg: #0b1020;
+      --bg2: #0e1225;
+      --card: #121936;
+      --muted: #9aa4bf;
+      --primary: #7c3aed;
+      --accent: #22d3ee;
+      --white: #f7f8ff;
+      --radius: 16px;
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:"Inter",sans-serif;
+      color:var(--white);
+      min-height:100vh;
+      position:relative;
+    }
+
+    /* === Fond flouté === */
+    body::before{
+      content:"";
+      position: fixed;
+      top:-10px; left:-10px; right:-10px; bottom:-10px;
+      background: url("depositphotos.jpg") no-repeat center center fixed;
+      background-size: cover;
+      filter: blur(2px) brightness(0.45);
+      transform: scale(1.03);
+      pointer-events: none;
+      z-index:-2;
+    }
+    body::after{
+      content:"";
+      position: fixed;
+      inset:0;
+      background:
+        radial-gradient(1200px 800px at 10% -10%, rgba(124,58,237,.30), transparent 60%),
+        radial-gradient(900px 700px at 90% 0%, rgba(34,211,238,.22), transparent 55%);
+      pointer-events:none;
+      z-index:-1;
+    }
+    button:disabled {
+       opacity: 0.6;           /* un peu transparent mais pas illisible */
+       color: #fff !important; /* texte toujours blanc */
+       background-color: #3a3f58; /* couleur stable même désactivé */
+       cursor: not-allowed;    /* curseur de désactivation */
+}
+    button {
+      color: #fff;            /* texte blanc par défaut */
+}
+
+
+    header{max-width:1100px;margin:32px auto;padding:0 20px;display:flex;justify-content:space-between;align-items:center}
+    .brand{display:flex;align-items:center;gap:12px}
+    .status-pill{
+  margin-left:auto;
+  display:flex; align-items:center; gap:8px;
+  padding:6px 10px;
+  border-radius:999px;
+  background:rgba(255,255,255,.08);
+  border:1px solid rgba(255,255,255,.15);
+  box-shadow: var(--shadow);
+  font-size:13px;
+}
+    .logo{width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,var(--primary),var(--accent))}
+    h1{margin:0;font-size:22px;font-weight:800}
+    .sub{color:var(--muted);font-size:14px}
+    main{max-width:1100px;margin:0 auto;padding:20px;display:grid;grid-template-columns:1.2fr .8fr;gap:24px}
+    @media(max-width:960px){main{grid-template-columns:1fr}}
+    .panel{background:rgba(18,25,54,.7);border-radius:var(--radius);padding:22px}
+    .drop{position:relative;border:2px dashed rgba(255,255,255,.2);padding:24px;border-radius:var(--radius);text-align:center}
+    .drop input{position:absolute;inset:0;opacity:0;cursor:pointer}
+    .cta{margin-top:10px;padding:10px 14px;border-radius:12px;background:linear-gradient(135deg,rgba(124,58,237,.2),rgba(34,211,238,.15));cursor:pointer}
+    .preview{margin-top:16px;display:flex;gap:16px;align-items:center}
+    .thumb{width:110px;height:110px;border-radius:12px;overflow:hidden}
+    .thumb img{width:100%;height:100%;object-fit:cover}
+    .results .card{border-radius:var(--radius);padding:18px;background:rgba(255,255,255,.08)}
+    .row{display:flex;justify-content:space-between;align-items:center}
+    .big{font-size:22px;font-weight:800}
+    .progress{height:10px;background:rgba(255,255,255,.1);border-radius:999px;overflow:hidden;margin-top:10px}
+    .bar{height:100%;width:0%;background:linear-gradient(90deg,var(--accent),var(--primary));transition:width .5s}
+    .grid{margin-top:14px;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .k{background:rgba(255,255,255,.06);padding:10px;border-radius:12px}
+    .hidden{display:none}
+    .spin{width:16px;height:16px;border:2px solid rgba(255,255,255,.3);border-top-color:var(--white);border-radius:50%;animation:spin 1s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+  </style>
+</head>
+<body>
+  <header>
+  <div class="brand">
+    <div class="logo"></div>
+    <div>
+      <h1>Fruits Classifier – Démo Web</h1>
+    </div>
+  </div>
+  <div class="status-pill">
+    <div class="spin" id="busy" style="display:none"></div>
+    <span id="status">Prêt</span>
+  </div>
+</header>
+
+
+  <main>
+    <!-- Uploader -->
+    <section class="panel">
+      <h2>1) Choisir une image</h2>
+      <div class="drop" id="drop">
+        <input id="file" type="file" accept="image/*"/>
+        <div><strong>Glisser-déposer</strong> ou <span class="cta">Parcourir…</span></div>
+      </div>
+      <div class="preview hidden" id="preview">
+        <div class="thumb"><img id="thumb" alt=""/></div>
+        <div>
+          <div id="fname" style="font-weight:700">—</div>
+          <small id="fsize" style="color:var(--muted)">—</small>
+        </div>
+      </div>
+      <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap">
+        <button id="predict" class="cta" type="button" disabled>
+          <span class="spin" id="spinner" style="display:none"></span>
+          Lancer la prédiction (comparaison)
+        </button>
+        <button id="predictBest" class="cta"  type = "button" disabled>
+          <span class="spin" id="spinnerBest" style="display:none"></span>
+          Prédire (meilleur modèle)
+        </button>
+      </div>
+    </section>
+
+    <!-- Résultats -->
+    <section class="panel results">
+      <h2>2) Résultat</h2>
+      <div class="card">
+        <div class="row"><div class="big" id="mainLabel">—</div><div id="mainConf">—</div></div>
+        <div class="progress"><div class="bar" id="bar"></div></div>
+        <div id="topk" class="grid hidden"></div>
+      </div>
+    </section>
+    
+  </main>
+  <script>
+    const API_URL  = "http://127.0.0.1:8000/predict_all";
+    const API_BEST = "http://127.0.0.1:8000/predict_best";
+        //js
+    const el = {
+      file: document.getElementById('file'),
+      drop: document.getElementById('drop'),
+      preview: document.getElementById('preview'),
+      thumb: document.getElementById('thumb'),
+      fname: document.getElementById('fname'),
+      fsize: document.getElementById('fsize'),
+      predict: document.getElementById('predict'),
+      spinner: document.getElementById('spinner'),
+      busy: document.getElementById('busy'),
+      status: document.getElementById('status'),
+      mainLabel: document.getElementById('mainLabel'),
+      mainConf: document.getElementById('mainConf'),
+      bar: document.getElementById('bar'),
+      topk: document.getElementById('topk'),
+      predictBest: document.getElementById('predictBest'),
+      spinnerBest: document.getElementById('spinnerBest')
+    };
+
+    el.file.addEventListener('change', e=> setFile(e.target.files[0]));
+    el.drop.addEventListener('dragover', e=> e.preventDefault());
+    el.drop.addEventListener('drop', e=>{ e.preventDefault(); setFile(e.dataTransfer.files[0]); });
+
+    function setFile(file){
+      if(!file) return;
+      el.file._selected = file;
+      el.predict.disabled = false;
+      el.predictBest.disabled = false;
+      const r=new FileReader();
+      r.onload=()=>{el.thumb.src=r.result; el.preview.classList.remove('hidden');}
+      r.readAsDataURL(file);
+      el.fname.textContent=file.name;
+      el.fsize.textContent=(file.size/1024).toFixed(1)+' KB';
+      setTimeout(()=>{ el.file.value = ""; }, 0); // reset input
+    }
+
+    function toggleBusy(on, which = null){
+  el.status.textContent = on ? 'En cours…' : 'Prêt';
+  el.busy.style.display  = on ? 'inline-block' : 'none';
+
+  // Spinners : un seul à la fois
+  el.spinner.style.display     = (on && which === 'compare') ? 'inline-block' : 'none';
+  el.spinnerBest.style.display = (on && which === 'best')    ? 'inline-block' : 'none';
+
+  // Désactive UNIQUEMENT le bouton cliqué
+  if (which === 'compare') {
+    el.predict.disabled     = on;
+    el.predictBest.disabled = false;
+  } else if (which === 'best') {
+    el.predictBest.disabled = on;
+    el.predict.disabled     = false;
+  } else {
+    // état neutre
+    el.predict.disabled     = false;
+    el.predictBest.disabled = false;
+  }
+}
+
+
+    async function postForm(url, form){
+  const res = await fetch(url, { method: 'POST', body: form });
+  if(!res.ok){
+    const txt = await res.text().catch(()=>"(no body)");
+    throw new Error(`HTTP ${res.status} – ${txt}`);
+  }
+  return res.json();
+}
+
+function showError(where, err){
+  console.error(where, err);
+  alert(`Erreur (${where}) : ${err.message || err}`);
+}
+
+    async function doPredict(){
+  const f = el.file._selected; 
+  if(!f){ alert("Choisis une image d'abord."); return; }
+  const form = new FormData(); form.append('file', f);
+
+  toggleBusy(true, 'compare');
+  try{
+    const data = await postForm(API_URL, form);
+    if(!data || !Array.isArray(data.results)){
+      throw new Error("Réponse invalide /predict_all");
+    }
+    renderCompare(data);
+  }catch(e){
+    showError("predict_all", e);
+  }finally{
+    toggleBusy(false);
+  }
+}
+
+ function escapeHTML(s){
+    return String(s).replace(/[&<>"']/g, m => ({
+      "&":"&amp;",
+      "<":"&lt;",
+      ">":"&gt;",
+      '"':"&quot;",
+      "'":"&#39;"
+    }[m]));
+  }
+    function renderCompare(data){
+      if(!data.results) return;
+      const best=data.results[0];
+      setMain(best.label,best.confidence);
+      el.topk.innerHTML=data.results.map(r=>`
+        <div class="k">
+          <div><b>${r.model}</b> → ${r.label}</div>
+          <div>${(r.confidence*100).toFixed(2)}% • ${r.latency_ms} ms</div>
+        </div>`).join('');
+      el.topk.classList.remove('hidden');
+    }
+
+  async function doPredictBest(){
+  const f = el.file._selected; 
+  if(!f){ alert("Choisis une image d'abord."); return; }
+  const form = new FormData(); form.append('file', f);
+
+  toggleBusy(true, 'best');
+  try{
+    const data = await postForm(API_BEST, form);
+    // Debug utile au besoin
+    console.log("predict_best:", data);
+
+    if(!data || !data.chosen){
+      // Montre ce qu'on a reçu pour comprendre
+      throw new Error("Réponse invalide /predict_best");
+    }
+    renderBest(data);
+  }catch(e){
+    showError("predict_best", e);
+  }finally{
+    toggleBusy(false);
+  }
+}
+
+
+   function renderBest(data){
+  if(!data || !data.chosen){ alert("Réponse invalide"); return; }
+  const c   = data.chosen || {};
+  const ft  = data.mobilenet_ft || {};
+  const cnn = data.cnn || {};
+
+  setMain(`${escapeHTML(c.label||'—')} (modèle: ${escapeHTML(c.model||'—')})`, c.confidence);
+
+  const reasonHTML = c.reason ? `<div style="margin-top:8px;color:#9aa4bf;font-size:13px">
+    Raison : ${escapeHTML(c.reason)}</div>` : "";
+
+  el.topk.innerHTML = `
+    <div class="k">
+      <div><b>${escapeHTML(ft.model||'—')}</b> → ${escapeHTML(ft.label||'—')}</div>
+      <div>${ft.confidence!=null ? (ft.confidence*100).toFixed(2)+'%' : '—'} • ${ft.latency_ms ?? "—"} ms</div>
+    </div>
+    <div class="k">
+      <div><b>${escapeHTML(cnn.model||'—')}</b> → ${escapeHTML(cnn.label||'—')}</div>
+      <div>${cnn.confidence!=null ? (cnn.confidence*100).toFixed(2)+'%' : '—'} • ${cnn.latency_ms ?? "—"} ms</div>
+    </div>
+    ${reasonHTML}
+  `;
+  el.topk.classList.remove('hidden');
+}
+
+
+
+    function setMain(label,conf){
+      el.mainLabel.textContent=label||'—';
+      el.mainConf.textContent=(conf!=null?(conf*100).toFixed(2)+'%':'—');
+      el.bar.style.width=(Math.max(0,Math.min(1,Number(conf)||0))*100)+'%';
+    }
+
+    el.predict.addEventListener('click',doPredict);
+    el.predictBest.addEventListener('click',doPredictBest);
+  </script>
+</body>
+</html>
